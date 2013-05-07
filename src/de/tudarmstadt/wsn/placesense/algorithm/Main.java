@@ -1,10 +1,9 @@
 package de.tudarmstadt.wsn.placesense.algorithm;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
+
+import de.tudarmstadt.wsn.placesense.utility.UtilityMethods;
 
 public class Main {
 	
@@ -19,19 +18,13 @@ public class Main {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		List<ArrayList<String>> scanList = convertToCollection(scans);
+		List<ArrayList<String>> scanList = UtilityMethods.convert2DArrayTo2DCollection(scans);
+		
 		PlaceSenseCore psc = new PlaceSenseCore(scanList);
 		psc.executePlaceSense();
 
 	}
 
-	private static List<ArrayList<String>> convertToCollection(String[][] argScans) {
-		List<ArrayList<String>> resultingList = new ArrayList<ArrayList<String>>();
-		List<String[]> tmpList = Arrays.asList(argScans);
-		for(String[] str : tmpList){
-			resultingList.add(new ArrayList<String>(Arrays.asList(str)));
-		}
-		return resultingList;
-	}
+
 
 }

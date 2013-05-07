@@ -30,13 +30,18 @@ public class PlaceSenseCore {
 	
 	public void executePlaceSense(){
 		stepSize = (int) (useOverlapping ? 1 : sampleRate * windowSize);
+		int sCur = 0;
 		
-		for(int i = 0; i < scanList.size(); i += stepSize){
+		//starting with i=1 because of need of comparison
+		for(int i = 1; i < scanList.size(); i += stepSize){
 			if(isStationary){ //look for departure
-				detectDeparture(i);
+				boolean tmp = detectDeparture(i);
 			}
 			if(!isStationary){ //look for entrance
-				detectEntrance(i);
+				boolean tmp = detectEntrance(i);
+				if(tmp){
+					
+				}
 			}
 		}
 	}
