@@ -18,7 +18,7 @@ public class Main {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		List<ArrayList<String>> scanList = UtilityMethods.convert2DArrayTo2DCollection(scans);
+		List<String[]> scanList = UtilityMethods.convert2DArrayTo2DCollection(scans);
 		
 		PlaceSenseCore psc = new PlaceSenseCore(scanList);
 		psc.executePlaceSense();

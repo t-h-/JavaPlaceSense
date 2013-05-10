@@ -1,5 +1,12 @@
 package de.tudarmstadt.wsn.placesense.utility;
 
-public class ScanWindow {
+import java.util.ArrayList;
 
+public class ScanWindow {
+	ArrayList<ArrayList<String>> scanWindow;
+
+	public ScanWindow(ArrayList<ArrayList<String>> scanWindow) {
+		super();
+		this.scanWindow = scanWindow;
+	}
 }
