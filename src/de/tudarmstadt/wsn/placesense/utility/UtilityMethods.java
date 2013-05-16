@@ -6,42 +6,43 @@ import java.util.List;
 
 public class UtilityMethods {
 
-	public static List<String[]> convert2DArrayTo2DCollection(String[][] argScans) {
-		List<String[]> resultingList = new ArrayList<String[]>();
+	public static List<ArrayList<String>> convert2DArrayTo2DCollection(String[][] argScans) {
+		List<ArrayList<String>> resultingList = new ArrayList<ArrayList<String>>();
 		List<String[]> tmpList = Arrays.asList(argScans);
 		for(String[] strArr : tmpList){
-			resultingList.add(strArr);
+			ArrayList<String> curList = new ArrayList<String>(Arrays.asList(strArr));
+			resultingList.add(curList);
 		}
 		return resultingList;
 	}
 	
 	
-	public static ArrayList<ArrayList<String[]>> createScanWindowList(List<String[]> argScanList, int stepSize, boolean useOverlapping) {
-		ArrayList<ArrayList<String[]>> resultScanWindowList = new ArrayList<ArrayList<String[]>>();
-		ArrayList<String[]> curScanWindow = new ArrayList<String[]>();
+	public static ArrayList<ScanWindow> createScanWindowList(List<ArrayList<String>> argScanList, int stepSize, boolean useOverlapping) {
+		ArrayList<ScanWindow> resultScanWindowList = new ArrayList<ScanWindow>();
+		ScanWindow curScanWindow = new ScanWindow();
 		if(!useOverlapping){
-			int windex = 1;
+			int wIndex = 1;
 			for(int i = 0; i < argScanList.size(); i++){
 				
-				curScanWindow.add(argScanList.get(i));
+				curScanWindow.addScan(argScanList.get(i));
 	
-				if(windex == stepSize){
+				if(wIndex == stepSize){
 					resultScanWindowList.add(curScanWindow);
-					curScanWindow = new ArrayList<String[]>();
-					windex = 0;
+					curScanWindow = new ScanWindow();
+					wIndex = 0;
 				}
 				
-				windex++;
+				wIndex++;
 				
 			}
 		}
 		else{
 			for(int i = 0; i < argScanList.size() - stepSize; i++){
 				for(int j = 0; j < stepSize; j++){
-						curScanWindow.add(argScanList.get(i+j));
+						curScanWindow.addScan(argScanList.get(i+j));
 				}
 				resultScanWindowList.add(curScanWindow);
-				curScanWindow = new ArrayList<String[]>();
+				curScanWindow = new ScanWindow();
 			}
 		}
 		return resultScanWindowList;

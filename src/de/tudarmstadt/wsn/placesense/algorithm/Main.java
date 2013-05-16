@@ -11,14 +11,14 @@ public class Main {
 			{"a", "b", "c", "d"}, {"a", "c", "e"}, {"a", "c", "d"}, {"x", "y", "q"}, {"x", "y", "z"}, {"x", "y", "z"}};
 
 	public Main() {
-		// TODO Auto-generated constructor stub
+		
 	}
 
 	/**
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		List<String[]> scanList = UtilityMethods.convert2DArrayTo2DCollection(scans);
+		List<ArrayList<String>> scanList = UtilityMethods.convert2DArrayTo2DCollection(scans);
 		
 		PlaceSenseCore psc = new PlaceSenseCore(scanList);
 		psc.executePlaceSense();
