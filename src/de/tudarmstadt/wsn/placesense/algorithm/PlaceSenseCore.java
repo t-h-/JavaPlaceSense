@@ -1,6 +1,7 @@
 package de.tudarmstadt.wsn.placesense.algorithm;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
@@ -20,7 +21,9 @@ public class PlaceSenseCore {
 	private int tCur = tMax;
 	
 	private boolean isStationary = false;
-	private HashSet<String> history = new HashSet<String>();
+	private int scansSinceEntry = 0;
+	private HashMap<String, Double> fingerprint = new HashMap<String, Double>(); //guess this will not be used
+	private HashMap<String, Integer> history = new HashMap<String, Integer>(); //also fingerprint
 	private List<ArrayList<String>> scanList = new ArrayList<ArrayList<String>>();
 	private HashSet<String> representativeSet = new HashSet<String>();
 	
@@ -71,13 +74,16 @@ public class PlaceSenseCore {
 	
 	
 	private boolean detectDeparture(ScanWindow scanWindow) {
+		history = updateHistory(scanWindow);
+		selectRepresentativeBeacons();
 		return false;
 	}
 	
+
 	private boolean isSubset(ScanWindow sW) {
 		boolean res = true;
 		for(ArrayList<String> aL : sW.getScanWindow()){
-			if(!history.containsAll(aL)){
+			if(!history.keySet().containsAll(aL)){
 				res = false;
 				break;
 			}
@@ -85,12 +91,22 @@ public class PlaceSenseCore {
 		return res;
 	}
 	
-	private HashSet<String> getUniqueAPsFromScanWindow(ScanWindow sW){
-		HashSet<String> resultSet = new HashSet<String>();
+	private HashMap<String, Integer> getUniqueAPsFromScanWindow(ScanWindow sW){
+		HashMap<String, Integer> resultSet = new HashMap<String, Integer>();
 		for(ArrayList<String> aL : sW.getScanWindow()){
-			resultSet.addAll(aL);
+			for(String str : aL){
+				resultSet.put(str, 0);
+			}
 		}
 		return resultSet;
+	}
+	
+	private HashMap<String, Integer> updateHistory(ScanWindow scanWindow) {
+		return null;
+	}
+	
+	private HashSet<String> selectRepresentativeBeacons() {
+		return null;
 	}
 
 }
