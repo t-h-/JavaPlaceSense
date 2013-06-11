@@ -3,61 +3,55 @@ package de.tudarmstadt.wsn.placesense.algorithm;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map.Entry;
 
-import de.tudarmstadt.wsn.placesense.utility.Scan;
+import de.tudarmstadt.wsn.placesense.utility.Fingerprint;
 import de.tudarmstadt.wsn.placesense.utility.ScanWindow;
-import de.tudarmstadt.wsn.placesense.utility.State;
-import de.tudarmstadt.wsn.placesense.utility.UtilityMethods;
 
 public class PlaceSenseCore {
 
+	// parameters
 	private int sMax = 3;
 	private int tMax = 3;
 	private double sampleRate = 0.1; // Hz
 	private double windowSize = 40; // seconds
+	private double repThreshold = 0.7;
 	// sampleRate*windowSize has to be a round integer!!!
 
-	private boolean useOverlapping = false;
-	private int numScansPerWindow = 1;
-
+	// state
 	private int sCur = 0;
 	private int tCur = tMax;
-	private double repThreshold = 0.7;
 	private boolean isStationary = false;
-	private HashMap<String, Double> fingerprint = new HashMap<String, Double>(); // guess  this will not be used
-	private HashMap<String, Integer> history = new HashMap<String, Integer>(); // also fingerprint?
-	private List<ArrayList<String>> scanList = new ArrayList<ArrayList<String>>();
+	private Fingerprint curFingerprint = new Fingerprint();
+	private HashMap<String, Integer> curHistory = new HashMap<String, Integer>();
 	private HashSet<String> representativeSet = new HashSet<String>();
+	private ArrayList<ScanWindow> scanWindowList = new ArrayList<ScanWindow>();
+	private ArrayList<Fingerprint> knownPlaces = new ArrayList<Fingerprint>();
 
-	public PlaceSenseCore(List<ArrayList<String>> scanList) {
-		this.scanList = scanList;
+	public PlaceSenseCore(ArrayList<ScanWindow> scanWindowList) {
+		this.scanWindowList = scanWindowList;
 	}
 
-	public PlaceSenseCore(List<ArrayList<String>> scanList, int sMax, int tMax, double sampleRate, double windowSize, boolean useOverlapping) {
-		this.scanList = scanList;
+	public PlaceSenseCore(ArrayList<ScanWindow> scanWindowList, int sMax, int tMax, double sampleRate, double windowSize, double repThreshold) {
+		this.scanWindowList = scanWindowList;
 		this.sMax = sMax;
 		this.tMax = tMax;
 		this.sampleRate = sampleRate;
 		this.windowSize = windowSize;
-		this.useOverlapping = useOverlapping;
+		this.repThreshold = repThreshold;
 	}
 
 	public ArrayList<HashMap<String, Double>> executePlaceSense() {
-		numScansPerWindow = (int) (sampleRate * windowSize);
-		ArrayList<ScanWindow> scanWindowList = UtilityMethods.createScanWindowList(scanList, numScansPerWindow, useOverlapping);
 
 		ArrayList<HashMap<String, Double>> fingerprintList = new ArrayList<HashMap<String, Double>>();
-		// starting with i=1 because of need of comparison (= first window) 
-		//comment here for real time hook
 		for (int i = 0; i < scanWindowList.size(); i++) {
 			if (isStationary) { // look for departure
 				if (detectDeparture(scanWindowList.get(i))) {
-					calculateFingerprint();
-					fingerprintList.add(new HashMap<String, Double>(fingerprint));
-					fingerprint.clear();
-					history.clear();
+					calculateCurFingerprint();
+					// fingerprintList.add(new HashMap<String, Double>(fingerprint));
+
+					// fingerprint.clear();
+					curHistory.clear();
 					representativeSet.clear();
 					sCur = 0;
 					tCur = tMax;
@@ -77,16 +71,17 @@ public class PlaceSenseCore {
 	}
 
 	private boolean detectEntrance(ScanWindow sW) {
-		if (isSubsetOfHistory(sW) && !history.isEmpty()) {
+		if (isSubsetOfHistory(sW)) {
 			updateHistory(sW);
 			sCur++;
 		} else { // if(!isSubset(sW) || history.isEmpty())
-			history.clear();
-			// init of history here:
-			HashSet<String> curSeenAPs = getUniqueAPsFromScanWindow(sW);
-			for (String accP : curSeenAPs) {
-				history.put(accP, 1);
-			}
+			curHistory.clear();
+			// init of history here: uncomment following lines to use more
+			// efficient variant.
+			// HashSet<String> curSeenAPs = getUniqueAPsFromScanWindow(sW);
+			// for (String accP : curSeenAPs) {
+			// history.put(accP, 1);
+			// }
 			sCur = 1;
 		}
 		return (sCur == sMax) ? true : false;
@@ -96,29 +91,30 @@ public class PlaceSenseCore {
 
 		HashSet<String> curSeenAPs = getUniqueAPsFromScanWindow(scanWindow);
 		boolean changeThroughRemoval = curSeenAPs.removeAll(representativeSet);
-		if(!changeThroughRemoval & !curSeenAPs.isEmpty()){ // = if no AP from repSet is seen in current scanwindow
-															// and new beacons are seen in scanwindow
-			tCur--;											// decrease t
+		if (!changeThroughRemoval & !curSeenAPs.isEmpty()) { 	// = if no AP from repSet is seen in current scanwindow
+																// and new beacons are seen in scanwindow
+			tCur--; // decrease t
 		} else {
-			sCur++;  //detectDeparture gets called every time a new scan window comes in, thus incrementing here. //(sCur is also counter for determining how many scans since stay)
+			sCur++; // detectDeparture gets called every time a new scan window
+					// comes in, thus incrementing here. //(sCur is also counter
+					// for determining how many scans since stay)
 			updateHistory(scanWindow);
 			tCur = tMax;
 		}
 		return (tCur == 0) ? true : false;
 	}
 
-
 	private boolean isSubsetOfHistory(ScanWindow sW) {
 		boolean res = true;
+		if (curHistory.isEmpty()) return true; // just comment out this condition for efficient variant.
 		for (ArrayList<String> aL : sW.getScanWindow()) {
-			if (!history.keySet().containsAll(aL)) {
+			if (!curHistory.keySet().containsAll(aL)) {
 				res = false;
 				break;
 			}
 		}
 		return res;
 	}
-
 
 	private HashSet<String> getUniqueAPsFromScanWindow(ScanWindow sW) {
 		HashSet<String> resultSet = new HashSet<String>();
@@ -130,29 +126,45 @@ public class PlaceSenseCore {
 		return resultSet;
 	}
 
+	/**
+	 * 
+	 * @param scanWindow
+	 */
 	private void updateHistory(ScanWindow scanWindow) {
 		HashSet<String> tmpSet = getUniqueAPsFromScanWindow(scanWindow);
 		for (String accP : tmpSet) {
-			if (history.get(accP) == null) {
-				history.put(accP, 1);
+			if (curHistory.get(accP) == null) {
+				curHistory.put(accP, 1);
 			} else {
-				history.put(accP, history.get(accP) + 1);
+				curHistory.put(accP, curHistory.get(accP) + 1);
 			}
 		}
 	}
 
 	private void determineRepresentativeBeacons() {
-		calculateFingerprint();
-		for(Entry<String, Double> accP : fingerprint.entrySet()){
-			if(accP.getValue() >= repThreshold){
+		calculateCurFingerprint();
+		for (Entry<String, Double> accP : curFingerprint.getFingerprint().entrySet()) {
+			if (accP.getValue() >= repThreshold) {
 				representativeSet.add(accP.getKey());
 			}
 		}
 	}
-	
-	private void calculateFingerprint(){
-		for(Entry<String, Integer> accP : history.entrySet()){
-			fingerprint.put(accP.getKey(), (double)(accP.getValue()) / sCur);
+
+	private void calculateCurFingerprint() {
+		for (Entry<String, Integer> accP : curHistory.entrySet()) {
+			curFingerprint.getFingerprint().put(accP.getKey(), (double) (accP.getValue()) / sCur);
 		}
+	}
+
+	private void fingerprintIsInKnownPlaces() {
+
+	}
+
+	private void beaconPrintCompare() {
+
+	}
+
+	private void beaconPringMerge() {
+
 	}
 }
