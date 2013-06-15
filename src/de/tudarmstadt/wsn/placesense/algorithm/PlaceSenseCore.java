@@ -13,8 +13,6 @@ public class PlaceSenseCore {
 	// parameters
 	private int sMax = 3;
 	private int tMax = 3;
-	private double sampleRate = 0.1; // Hz
-	private double windowSize = 40; // seconds
 	private double repThreshold = 0.7;
 	// sampleRate*windowSize has to be a round integer!!!
 
@@ -32,43 +30,51 @@ public class PlaceSenseCore {
 		this.scanWindowList = scanWindowList;
 	}
 
-	public PlaceSenseCore(ArrayList<ScanWindow> scanWindowList, int sMax, int tMax, double sampleRate, double windowSize, double repThreshold) {
+	public PlaceSenseCore(ArrayList<ScanWindow> scanWindowList, int sMax, int tMax, double repThreshold) {
 		this.scanWindowList = scanWindowList;
 		this.sMax = sMax;
 		this.tMax = tMax;
-		this.sampleRate = sampleRate;
-		this.windowSize = windowSize;
 		this.repThreshold = repThreshold;
 	}
 
 	public ArrayList<HashMap<String, Double>> executePlaceSense() {
 
-		ArrayList<HashMap<String, Double>> fingerprintList = new ArrayList<HashMap<String, Double>>();
 		for (int i = 0; i < scanWindowList.size(); i++) {
 			if (isStationary) { // look for departure
 				if (detectDeparture(scanWindowList.get(i))) {
 					calculateCurFingerprint();
-					// fingerprintList.add(new HashMap<String, Double>(fingerprint));
-
-					// fingerprint.clear();
+					
+					int bestIndex = getIndexOfBestMatchingPlace();
+					if(bestIndex != -1){
+						mergeCurFingerprintWith(bestIndex);
+						System.out.println("merging "  + (i+1) + " to " + bestIndex);
+					} else {
+						knownPlaces.add(new Fingerprint(curFingerprint)); 
+						System.out.println("adding " + (i+1));
+					}
+					
+					curFingerprint.clear();
 					curHistory.clear();
 					representativeSet.clear();
 					sCur = 0;
 					tCur = tMax;
-					System.out.println("departure detected at scanwindow index: " + i);
+					System.out.println("departure detected at scanwindow index: " + (i+1));
 					isStationary = false;
 				}
 			}
-			if (!isStationary) { // look for entrance
+			else if (!isStationary) { // look for entrance
 				if (detectEntrance(scanWindowList.get(i))) {
-					System.out.println("entrance detected at scanwindow index: " + i);
+					System.out.println("entrance detected at scanwindow index: " + (i+1));
 					determineRepresentativeBeacons();
 					isStationary = true;
 				}
 			}
 		}
-		return fingerprintList;
+		
+		return null;
 	}
+
+
 
 	private boolean detectEntrance(ScanWindow sW) {
 		if (isSubsetOfHistory(sW)) {
@@ -77,12 +83,13 @@ public class PlaceSenseCore {
 		} else { // if(!isSubset(sW) || history.isEmpty())
 			curHistory.clear();
 			// init of history here: uncomment following lines to use more
-			// efficient variant.
-			// HashSet<String> curSeenAPs = getUniqueAPsFromScanWindow(sW);
-			// for (String accP : curSeenAPs) {
-			// history.put(accP, 1);
-			// }
-			sCur = 1;
+			// efficient variant. (plus comment an additional line further below, see comments)
+//			HashSet<String> curSeenAPs = getUniqueAPsFromScanWindow(sW);	//
+//			for (String accP : curSeenAPs) {								//
+//				curHistory.put(accP, 1);									//
+//			}																//
+//			sCur = 1;														//
+			sCur = 0;
 		}
 		return (sCur == sMax) ? true : false;
 	}
@@ -105,8 +112,8 @@ public class PlaceSenseCore {
 	}
 
 	private boolean isSubsetOfHistory(ScanWindow sW) {
-		boolean res = true;
 		if (curHistory.isEmpty()) return true; // just comment out this condition for efficient variant.
+		boolean res = true;
 		for (ArrayList<String> aL : sW.getScanWindow()) {
 			if (!curHistory.keySet().containsAll(aL)) {
 				res = false;
@@ -142,29 +149,67 @@ public class PlaceSenseCore {
 	}
 
 	private void determineRepresentativeBeacons() {
+		double maxResponseRate = 0;
+		String apWithMaxResponseRate = null;
 		calculateCurFingerprint();
 		for (Entry<String, Double> accP : curFingerprint.getFingerprint().entrySet()) {
-			if (accP.getValue() >= repThreshold) {
+			double curResponseRate = accP.getValue();
+			if (curResponseRate >= repThreshold) {
 				representativeSet.add(accP.getKey());
 			}
+			if (curResponseRate > maxResponseRate){
+				apWithMaxResponseRate = accP.getKey();
+			}
+		}
+		if(representativeSet.isEmpty()){
+			representativeSet.add(apWithMaxResponseRate);
 		}
 	}
 
 	private void calculateCurFingerprint() {
+		curFingerprint.setHistory(new HashMap<String, Integer>(curHistory));
+		curFingerprint.setNumScans(sCur);
 		for (Entry<String, Integer> accP : curHistory.entrySet()) {
 			curFingerprint.getFingerprint().put(accP.getKey(), (double) (accP.getValue()) / sCur);
 		}
 	}
 
-	private void fingerprintIsInKnownPlaces() {
-
+	private int getIndexOfBestMatchingPlace() {
+		int bestIndex = -1;
+		double bestMatchingCoefficient = 0;
+		
+		if(knownPlaces.isEmpty()){
+			return bestIndex;
+		}
+		
+		for(int i = 0; i < knownPlaces.size(); i++){
+			double curCoeff = getSimilarityCoefficient(knownPlaces.get(i));
+			if(curCoeff >= 0.68 && curCoeff > bestMatchingCoefficient){
+				bestIndex = i;
+				bestMatchingCoefficient = curCoeff;
+			}
+		}
+		return bestIndex;
+	}
+	
+	//TODO extend to uncovered APs... remember already iterated places...
+	private double getSimilarityCoefficient(Fingerprint tmpFP){
+		double maxedValues = 0;
+		double minnedValues = 0;
+		for(Entry<String, Double> tmpAP : tmpFP.getFingerprint().entrySet()){
+			Double curFPValue = curFingerprint.getFingerprint().get(tmpAP.getKey());
+			maxedValues += Math.max(tmpAP.getValue(), (curFPValue == null) ? 0 : curFPValue);
+			minnedValues += Math.min(tmpAP.getValue(), (curFPValue == null) ? Double.MAX_VALUE : curFPValue);
+		}
+		return (minnedValues / maxedValues);
+	}
+	
+	private void mergeCurFingerprintWith(int bestIndex) {
+		// TODO Auto-generated method stub
+		Fingerprint fpFromKnownPlaces = knownPlaces.get(bestIndex);
+		fpFromKnownPlaces.addToHistory(curHistory);
+		fpFromKnownPlaces.addToNumScansDuringScans(sCur);
+		fpFromKnownPlaces.calcFingerprint();
 	}
 
-	private void beaconPrintCompare() {
-
-	}
-
-	private void beaconPringMerge() {
-
-	}
 }
