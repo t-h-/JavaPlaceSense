@@ -7,6 +7,12 @@ import java.util.List;
 import de.tudarmstadt.wsn.placesense.utility.ScanWindow;
 import de.tudarmstadt.wsn.placesense.utility.UtilityMethods;
 
+
+/**
+ * Main class to execute the algorithm
+ * @author Tomi
+ *
+ */
 public class Main {
 
 	private static String[][] scans1 = { { "x", "y", "z" }, { "x", "y", "z", "a", "b" }, { "a", "b", "c", "d" }, { "a", "c", "d" },
@@ -14,7 +20,7 @@ public class Main {
 			{ "a", "c", "d" }, { "a", "b", "c", "d" }, { "a", "c", "e" }, { "a", "c", "d" }, { "x", "y", "q" }, { "x", "y", "z" }, { "x", "y", "z" } };
 
 	private static String[][] scans2 = {
-		{ "x", "y", "z" }, { "x", "y", "z" }, { "x", "y", "z" }, { "x", "y", "z" },
+		{ "x", "y", "z" }, { "x", "y", "z" }, { "x", "y", "z" }, { "x", "y", "za" },
 		{ "a", "b", "c" }, { "a", "b", "c" }, { "a", "b", "c" }, { "a", "b", "c" },
 		{ "a", "b", "c" }, { "a", "b", "c" }, { "a", "b", "c" }, { "a", "b", "c" },
 		{ "a", "b" }, { "a", "b" }, { "a", "b" }, { "a", "b" },
@@ -78,7 +84,7 @@ public class Main {
 		ArrayList<ScanWindow> scanWindowList = UtilityMethods.createScanWindowList(scanList, numScansPerWindow, useOverlapping);
 
 		PlaceSenseCore psc = new PlaceSenseCore(scanWindowList, sMax, tMax, repThreshold);
-		ArrayList<HashMap<String, Double>> result = psc.executePlaceSense();
+		psc.executePlaceSense();
 
 	}
 
